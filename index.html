@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanism Kinematics Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:       #0b0f1a;
+    --panel:    #111827;
+    --border:   #1f2d45;
+    --accent:   #f59e0b;
+    --accent2:  #38bdf8;
+    --accent3:  #34d399;
+    --accent4:  #f472b6;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --danger:   #ef4444;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Blueprint grid bg */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ---- HEADER ---- */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 28px 48px 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-glyph {
+    width: 42px; height: 42px;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-bottom: 12px;
+    box-shadow: 0 0 18px rgba(245,158,11,0.3);
+  }
+  .header-text h1 {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+  .header-text p { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+
+  /* ---- TABS ---- */
+  .tabs {
+    margin-left: auto;
+    display: flex;
+    gap: 0;
+    align-self: flex-end;
+  }
+  .tab-btn {
+    padding: 10px 28px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    top: 1px;
+  }
+  .tab-btn:first-child { border-radius: 6px 0 0 0; }
+  .tab-btn:last-child  { border-radius: 0 6px 0 0; }
+  .tab-btn.active {
+    background: var(--panel);
+    color: var(--accent);
+    border-color: var(--border);
+    border-bottom-color: var(--panel);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.03); }
+
+  /* ---- MAIN LAYOUT ---- */
+  main {
+    position: relative;
+    z-index: 1;
+    padding: 32px 48px;
+    display: none;
+    gap: 28px;
+    grid-template-columns: 320px 1fr;
+  }
+  main.active { display: grid; }
+
+  /* ---- INPUT PANEL ---- */
+  .input-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .panel-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+  .panel-title {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title::before {
+    content: '';
+    display: block;
+    width: 4px; height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.12);
+  }
+  .field input.error { border-color: var(--danger); }
+
+  .error-msg {
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #fca5a5;
+    display: none;
+    line-height: 1.5;
+  }
+  .error-msg.visible { display: block; }
+
+  .run-btn {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(245,158,11,0.3);
+  }
+  .run-btn:hover { background: #fbbf24; box-shadow: 0 6px 28px rgba(245,158,11,0.45); transform: translateY(-1px); }
+  .run-btn:active { transform: translateY(0); }
+
+  /* mechanism type badge */
+  .mech-badge {
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.3);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 11px;
+    color: var(--accent2);
+    text-align: center;
+    display: none;
+  }
+  .mech-badge.visible { display: block; }
+
+  /* ---- RIGHT PANEL ---- */
+  .results-panel { display: flex; flex-direction: column; gap: 24px; }
+
+  /* ---- CANVAS ANIMATION ---- */
+  .anim-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .anim-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .anim-title {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .anim-title::before {
+    content: '';
+    display: block;
+    width: 4px; height: 14px;
+    background: var(--accent3);
+    border-radius: 2px;
+  }
+  .anim-controls { display: flex; gap: 10px; align-items: center; }
+  .ctrl-btn {
+    padding: 6px 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--accent3); color: var(--accent3); }
+  .speed-label { font-size: 11px; color: var(--muted); }
+  .speed-input {
+    width: 60px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    text-align: center;
+  }
+
+  .anim-canvas-wrap {
+    background: #080c14;
+    border-radius: 8px;
+    border: 1px solid rgba(56,189,248,0.1);
+    overflow: hidden;
+    position: relative;
+  }
+  canvas.mech-canvas {
+    display: block;
+    width: 100%;
+    height: 320px;
+  }
+
+  /* theta display overlay */
+  .theta-overlay {
+    position: absolute;
+    top: 10px; left: 14px;
+    font-size: 11px;
+    color: var(--accent);
+    font-family: var(--mono);
+    pointer-events: none;
+    display: none;
+  }
+  .theta-overlay.visible { display: block; }
+
+  /* ---- CHARTS GRID ---- */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .chart-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .chart-card-title {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .chart-card canvas { max-height: 160px; }
+
+  /* ---- TABLE ---- */
+  .table-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .table-title {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent4);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .table-title::before {
+    content: '';
+    display: block;
+    width: 4px; height: 14px;
+    background: var(--accent4);
+    border-radius: 2px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  thead th {
+    text-align: right;
+    padding: 8px 12px;
+    font-size: 9.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  thead th:first-child { text-align: center; color: var(--accent); }
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody td {
+    padding: 8px 12px;
+    text-align: right;
+    border-bottom: 1px solid rgba(31,45,69,0.5);
+    font-size: 12px;
+    color: #cbd5e1;
+    font-variant-numeric: tabular-nums;
+  }
+  tbody td:first-child { text-align: center; color: var(--accent); font-weight: 500; }
+
+  /* Placeholder state */
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    min-height: 200px;
+  }
+  .placeholder svg { opacity: 0.3; }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+  .fade-in { animation: fadeIn 0.35s ease forwards; }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 1fr; }
+    header { padding: 20px 20px 0; flex-wrap: wrap; }
+    main { padding: 20px; }
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-glyph">⚙</div>
+  <div class="header-text">
+    <h1>Mechanism Kinematics Analyzer</h1>
+    <p>Slider-Crank &amp; Four-Bar Linkage Analysis Tool</p>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('sc')">Slider-Crank</button>
+    <button class="tab-btn" onclick="switchTab('fb')">Four-Bar</button>
+  </div>
+</header>
+
+<!-- ============================= SLIDER-CRANK ============================= -->
+<main id="tab-sc" class="active">
+  <div class="input-panel">
+    <div class="panel-card">
+      <div class="panel-title">Parameters</div>
+      <div class="field">
+        <label>Crank Length r (m)</label>
+        <input type="number" id="sc-r" value="0.1" step="0.01">
+      </div>
+      <div class="field">
+        <label>Connecting Rod Length l (m)</label>
+        <input type="number" id="sc-l" value="0.35" step="0.01">
+      </div>
+      <div class="field">
+        <label>Offset e (m) — 0 for inline</label>
+        <input type="number" id="sc-e" value="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Crank Angular Velocity ω (rad/s)</label>
+        <input type="number" id="sc-omega" value="10" step="1">
+      </div>
+      <div class="error-msg" id="sc-error"></div>
+    </div>
+    <button class="run-btn" onclick="runSC()">▶ Analyze</button>
+
+    <div class="panel-card" id="sc-info-panel" style="display:none">
+      <div class="panel-title">Live Readout</div>
+      <div id="sc-readout" style="font-size:11px; line-height:2; color:var(--muted);">—</div>
+    </div>
+  </div>
+
+  <div class="results-panel" id="sc-results">
+    <div class="placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      Enter parameters and click Analyze to begin
+    </div>
+  </div>
+</main>
+
+<!-- ============================= FOUR-BAR ============================= -->
+<main id="tab-fb">
+  <div class="input-panel">
+    <div class="panel-card">
+      <div class="panel-title">Parameters</div>
+      <div class="field">
+        <label>Fixed Link L1 (m)</label>
+        <input type="number" id="fb-l1" value="4" step="0.1">
+      </div>
+      <div class="field">
+        <label>Crank L2 (m)</label>
+        <input type="number" id="fb-l2" value="2" step="0.1">
+      </div>
+      <div class="field">
+        <label>Coupler L3 (m)</label>
+        <input type="number" id="fb-l3" value="4.5" step="0.1">
+      </div>
+      <div class="field">
+        <label>Follower L4 (m)</label>
+        <input type="number" id="fb-l4" value="3" step="0.1">
+      </div>
+      <div class="field">
+        <label>Crank Angular Velocity ω₂ (rad/s)</label>
+        <input type="number" id="fb-omega" value="10" step="1">
+      </div>
+      <div class="error-msg" id="fb-error"></div>
+    </div>
+    <button class="run-btn" onclick="runFB()">▶ Analyze</button>
+
+    <div class="mech-badge" id="fb-badge"></div>
+
+    <div class="panel-card" id="fb-info-panel" style="display:none">
+      <div class="panel-title">Live Readout</div>
+      <div id="fb-readout" style="font-size:11px; line-height:2; color:var(--muted);">—</div>
+    </div>
+  </div>
+
+  <div class="results-panel" id="fb-results">
+    <div class="placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Enter parameters and click Analyze to begin
+    </div>
+  </div>
+</main>
+
+<script>
+/* ============================================================
+   TAB SWITCHING
+============================================================ */
+function switchTab(id) {
+  document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  const idx = id === 'sc' ? 0 : 1;
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+}
+
+/* ============================================================
+   CHART.JS HELPERS
+============================================================ */
+const chartInstances = {};
+
+function makeChart(canvasId, label, color, xData, yData) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: xData,
+      datasets: [{
+        label,
+        data: yData,
+        borderColor: color,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: true,
+        backgroundColor: color + '18'
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.parsed.y.toFixed(4)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 7 },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 5 },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   ANIMATION STATE
+============================================================ */
+let animState = {
+  sc: { rafId: null, running: false, theta: 0 },
+  fb: { rafId: null, running: false, theta: 0 }
+};
+
+function stopAnim(key) {
+  if (animState[key].rafId) cancelAnimationFrame(animState[key].rafId);
+  animState[key].running = false;
+  animState[key].rafId = null;
+}
+
+/* ============================================================
+   SLIDER-CRANK KINEMATICS
+============================================================ */
+function scKinematics(thetaDeg, r, l, e, omega) {
+  const theta = thetaDeg * Math.PI / 180;
+  const sinPhi = (r * Math.sin(theta) - e) / l;
+  const cosPhi = Math.sqrt(Math.max(0, 1 - sinPhi * sinPhi));
+  const phi = Math.asin(sinPhi);
+
+  const omega2 = (r * omega * Math.cos(theta)) / (l * cosPhi);
+  const alpha2 = (l * omega2 * omega2 * Math.sin(phi) - r * omega * omega * Math.sin(theta)) / (l * cosPhi);
+  const vs = -r * omega * Math.sin(theta) - l * omega2 * sinPhi;
+  const as = -r * omega * omega * Math.cos(theta) - l * alpha2 * sinPhi - l * omega2 * omega2 * cosPhi;
+
+  return { omega2, alpha2, vs, as, sinPhi, cosPhi, phi };
+}
+
+function runSC() {
+  const r = parseFloat(document.getElementById('sc-r').value);
+  const l = parseFloat(document.getElementById('sc-l').value);
+  const e = parseFloat(document.getElementById('sc-e').value);
+  const omega = parseFloat(document.getElementById('sc-omega').value);
+  const errEl = document.getElementById('sc-error');
+
+  // Validation
+  if (isNaN(r) || isNaN(l) || isNaN(e) || isNaN(omega)) {
+    errEl.textContent = 'Please enter valid numerical values.';
+    errEl.classList.add('visible'); return;
+  }
+  if (l <= r + Math.abs(e)) {
+    errEl.textContent = `Mechanism will lock up! Connecting rod l (${l}) must be strictly greater than r + |e| (${(r + Math.abs(e)).toFixed(3)}).`;
+    errEl.classList.add('visible'); return;
+  }
+  errEl.classList.remove('visible');
+
+  // Stop any running animation
+  stopAnim('sc');
+
+  // --- TABLE DATA (12 angles) ---
+  const tableAngles = [0,30,60,90,120,180,210,240,270,300,330,360];
+  // --- PLOT DATA (every 3°) ---
+  const plotAngles = [];
+  for (let a = 0; a <= 360; a += 3) plotAngles.push(a);
+
+  const plotKin = plotAngles.map(a => scKinematics(a, r, l, e, omega));
+  const w2arr = plotKin.map(k => k.omega2);
+  const a2arr = plotKin.map(k => k.alpha2);
+  const vsarr = plotKin.map(k => k.vs);
+  const asarr = plotKin.map(k => k.as);
+
+  // Build HTML
+  let html = `
+    <div class="anim-card fade-in">
+      <div class="anim-header">
+        <div class="anim-title">Animation</div>
+        <div class="anim-controls">
+          <span class="speed-label">Speed×</span>
+          <input class="speed-input" id="sc-speed" value="1" type="number" min="0.1" max="5" step="0.1">
+          <button class="ctrl-btn" id="sc-pause-btn" onclick="toggleSC()">⏸ Pause</button>
+        </div>
+      </div>
+      <div class="anim-canvas-wrap">
+        <canvas id="sc-canvas" class="mech-canvas" width="900" height="320"></canvas>
+        <div class="theta-overlay visible" id="sc-theta">θ = 0°</div>
+      </div>
+    </div>
+
+    <div class="charts-grid fade-in">
+      <div class="chart-card">
+        <div class="chart-card-title">Connecting Rod Angular Velocity ω₂ (rad/s)</div>
+        <canvas id="sc-c1"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Connecting Rod Angular Acceleration α₂ (rad/s²)</div>
+        <canvas id="sc-c2"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Slider Velocity v<sub>s</sub> (m/s)</div>
+        <canvas id="sc-c3"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Slider Acceleration a<sub>s</sub> (m/s²)</div>
+        <canvas id="sc-c4"></canvas>
+      </div>
+    </div>
+
+    <div class="table-card fade-in">
+      <div class="table-title">Kinematics Table</div>
+      <table>
+        <thead>
+          <tr>
+            <th>θ (deg)</th>
+            <th>ω₂ (rad/s)</th>
+            <th>α₂ (rad/s²)</th>
+            <th>v<sub>s</sub> (m/s)</th>
+            <th>a<sub>s</sub> (m/s²)</th>
+          </tr>
+        </thead>
+        <tbody id="sc-tbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('sc-results').innerHTML = html;
+
+  // Fill table
+  const tbody = document.getElementById('sc-tbody');
+  tableAngles.forEach(a => {
+    const k = scKinematics(a, r, l, e, omega);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${a}°</td><td>${k.omega2.toFixed(4)}</td><td>${k.alpha2.toFixed(4)}</td><td>${k.vs.toFixed(4)}</td><td>${k.as.toFixed(4)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Charts
+  setTimeout(() => {
+    makeChart('sc-c1', 'ω₂', '#38bdf8', plotAngles, w2arr);
+    makeChart('sc-c2', 'α₂', '#f59e0b', plotAngles, a2arr);
+    makeChart('sc-c3', 'vs', '#34d399', plotAngles, vsarr);
+    makeChart('sc-c4', 'as', '#f472b6', plotAngles, asarr);
+  }, 50);
+
+  // Info panel
+  document.getElementById('sc-info-panel').style.display = 'block';
+
+  // Animation
+  const canvas = document.getElementById('sc-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W * 0.25, cy = H / 2; // crank center
+  const scale = H * 0.36 / (r + l + Math.abs(e) + 0.05);
+
+  animState.sc.theta = 0;
+  animState.sc.running = true;
+
+  let lastTime = null;
+
+  function drawSC(ts) {
+    if (!animState.sc.running) return;
+    if (!lastTime) lastTime = ts;
+    const dt = (ts - lastTime) / 1000;
+    lastTime = ts;
+
+    const speed = parseFloat(document.getElementById('sc-speed')?.value || 1);
+    animState.sc.theta += omega * dt * speed;
+
+    const theta = animState.sc.theta;
+    const xA = r * Math.cos(theta);
+    const yA = r * Math.sin(theta);
+    const yB = e;
+    const xBrel = xA + Math.sqrt(Math.max(0, l * l - (yB - yA) * (yB - yA)));
+
+    // canvas coords
+    const toPx = (x, y) => [cx + x * scale, cy - y * scale];
+    const [ox, oy] = toPx(0, 0);
+    const [ax, ay] = toPx(xA, yA);
+    const [bx, by] = toPx(xBrel, yB);
+    const [sliderL] = toPx(xBrel - 0.04, yB);
+    const [sliderR] = toPx(xBrel + 0.04, yB);
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Ground rail
+    const [railL] = toPx(-r * 0.3, e);
+    const [railR] = toPx(xBrel + r * 0.5 + l * 0.3, e);
+    ctx.beginPath();
+    ctx.setLineDash([8, 5]);
+    ctx.strokeStyle = 'rgba(56,189,248,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.moveTo(railL, by); ctx.lineTo(railR, by);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Ground pivot marker
+    ctx.beginPath();
+    ctx.arc(ox, oy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#334155';
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Crank
+    ctx.beginPath();
+    ctx.moveTo(ox, oy); ctx.lineTo(ax, ay);
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+
+    // Connecting rod
+    ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Slider block
+    const sw = scale * r * 0.5, sh = scale * r * 0.4;
+    ctx.beginPath();
+    ctx.roundRect(bx - sw / 2, by - sh / 2, sw, sh, 4);
+    ctx.fillStyle = '#1e40af';
+    ctx.fill();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Joint at B
+    ctx.beginPath();
+    ctx.arc(bx, by, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#34d399';
+    ctx.fill();
+
+    // Theta label overlay
+    const thetaDeg = ((theta * 180 / Math.PI) % 360 + 360) % 360;
+    document.getElementById('sc-theta').textContent = `θ = ${thetaDeg.toFixed(1)}°`;
+
+    // Update readout
+    const k = scKinematics(thetaDeg, r, l, e, omega);
+    document.getElementById('sc-readout').innerHTML =
+      `<span style="color:#94a3b8">ω₂</span> &nbsp;${k.omega2.toFixed(4)} <span style="color:var(--muted)">rad/s</span><br>` +
+      `<span style="color:#94a3b8">α₂</span> &nbsp;${k.alpha2.toFixed(4)} <span style="color:var(--muted)">rad/s²</span><br>` +
+      `<span style="color:#94a3b8">vₛ</span> &nbsp;${k.vs.toFixed(4)} <span style="color:var(--muted)">m/s</span><br>` +
+      `<span style="color:#94a3b8">aₛ</span> &nbsp;${k.as.toFixed(4)} <span style="color:var(--muted)">m/s²</span>`;
+
+    animState.sc.rafId = requestAnimationFrame(drawSC);
+  }
+
+  animState.sc.rafId = requestAnimationFrame(drawSC);
+}
+
+function toggleSC() {
+  const btn = document.getElementById('sc-pause-btn');
+  if (animState.sc.running) {
+    stopAnim('sc');
+    btn.textContent = '▶ Resume';
+  } else {
+    animState.sc.running = true;
+    animState.sc.rafId = requestAnimationFrame(function draw(ts) {
+      if (!animState.sc.running) return;
+      const speed = parseFloat(document.getElementById('sc-speed')?.value || 1);
+      const r = parseFloat(document.getElementById('sc-r').value);
+      const l = parseFloat(document.getElementById('sc-l').value);
+      const e = parseFloat(document.getElementById('sc-e').value);
+      const omega = parseFloat(document.getElementById('sc-omega').value);
+      animState.sc.theta += omega * 0.016 * speed;
+      // just re-run main draw by calling the full restart is simpler:
+      animState.sc.rafId = requestAnimationFrame(draw);
+    });
+    // Actually, re-run properly
+    stopAnim('sc');
+    animState.sc.running = true;
+    btn.textContent = '⏸ Pause';
+    const r = parseFloat(document.getElementById('sc-r').value);
+    const l = parseFloat(document.getElementById('sc-l').value);
+    const e = parseFloat(document.getElementById('sc-e').value);
+    const omega = parseFloat(document.getElementById('sc-omega').value);
+    const canvas = document.getElementById('sc-canvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const cx = W * 0.25, cy = H / 2;
+    const scale = H * 0.36 / (r + l + Math.abs(e) + 0.05);
+    let lastTime = null;
+    function drawLoop(ts) {
+      if (!animState.sc.running) return;
+      if (!lastTime) lastTime = ts;
+      const dt = (ts - lastTime) / 1000;
+      lastTime = ts;
+      const speed = parseFloat(document.getElementById('sc-speed')?.value || 1);
+      animState.sc.theta += omega * dt * speed;
+      const theta = animState.sc.theta;
+      const xA = r * Math.cos(theta);
+      const yA = r * Math.sin(theta);
+      const yB = e;
+      const xBrel = xA + Math.sqrt(Math.max(0, l * l - (yB - yA) * (yB - yA)));
+      const toPx = (x, y) => [cx + x * scale, cy - y * scale];
+      const [ox, oy] = toPx(0, 0);
+      const [ax, ay] = toPx(xA, yA);
+      const [bx, by] = toPx(xBrel, yB);
+      ctx.clearRect(0, 0, W, H);
+      const [railL] = toPx(-r * 0.3, e);
+      const [railR] = toPx(xBrel + r * 0.5 + l * 0.3, e);
+      ctx.beginPath(); ctx.setLineDash([8,5]);
+      ctx.strokeStyle = 'rgba(56,189,248,0.25)'; ctx.lineWidth = 1.5;
+      ctx.moveTo(railL, by); ctx.lineTo(railR, by); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(ox, oy, 6, 0, Math.PI*2);
+      ctx.fillStyle = '#334155'; ctx.fill();
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ax, ay);
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(ax, ay, 5, 0, Math.PI*2); ctx.fillStyle = '#ef4444'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      ctx.strokeStyle = '#34d399'; ctx.lineWidth = 4; ctx.stroke();
+      const sw = scale * r * 0.5, sh = scale * r * 0.4;
+      ctx.beginPath(); ctx.roundRect(bx - sw/2, by - sh/2, sw, sh, 4);
+      ctx.fillStyle = '#1e40af'; ctx.fill();
+      ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI*2); ctx.fillStyle = '#34d399'; ctx.fill();
+      const tDeg = ((theta*180/Math.PI)%360+360)%360;
+      document.getElementById('sc-theta').textContent = `θ = ${tDeg.toFixed(1)}°`;
+      const k = scKinematics(tDeg, r, l, e, omega);
+      document.getElementById('sc-readout').innerHTML =
+        `<span style="color:#94a3b8">ω₂</span> &nbsp;${k.omega2.toFixed(4)} <span style="color:var(--muted)">rad/s</span><br>` +
+        `<span style="color:#94a3b8">α₂</span> &nbsp;${k.alpha2.toFixed(4)} <span style="color:var(--muted)">rad/s²</span><br>` +
+        `<span style="color:#94a3b8">vₛ</span> &nbsp;${k.vs.toFixed(4)} <span style="color:var(--muted)">m/s</span><br>` +
+        `<span style="color:#94a3b8">aₛ</span> &nbsp;${k.as.toFixed(4)} <span style="color:var(--muted)">m/s²</span>`;
+      animState.sc.rafId = requestAnimationFrame(drawLoop);
+    }
+    animState.sc.rafId = requestAnimationFrame(drawLoop);
+  }
+}
+
+/* ============================================================
+   FOUR-BAR KINEMATICS
+============================================================ */
+function fbKinematics(theta2Deg, L1, L2, L3, L4, omega2) {
+  const t2 = theta2Deg * Math.PI / 180;
+  const K1 = L1 / L2, K2 = L1 / L4;
+  const K3 = (L1*L1 + L2*L2 - L3*L3 + L4*L4) / (2 * L2 * L4);
+
+  const A = Math.cos(t2) - K1 - K2 * Math.cos(t2) + K3;
+  const B = -2 * Math.sin(t2);
+  const C = K1 - (K2 + 1) * Math.cos(t2) + K3;
+
+  const disc = B*B - 4*A*C;
+  if (disc < 0) return null;
+
+  const t4 = 2 * Math.atan((-B - Math.sqrt(disc)) / (2 * A));
+  const sinT3 = (L4 * Math.sin(t4) - L2 * Math.sin(t2)) / L3;
+  const cosT3 = (L1 + L4 * Math.cos(t4) - L2 * Math.cos(t2)) / L3;
+  const t3 = Math.atan2(sinT3, cosT3);
+
+  const denom = Math.sin(t3 - t4);
+  if (Math.abs(denom) < 1e-10) return null;
+
+  const w3 = (L2 * omega2 * Math.sin(t4 - t2)) / (L3 * denom);
+  const w4 = (L2 * omega2 * Math.sin(t3 - t2)) / (L4 * denom);
+
+  const Av = w4*w4*L4*Math.cos(t4) - omega2*omega2*L2*Math.cos(t2) - w3*w3*L3*Math.cos(t3);
+  const Bv = w4*w4*L4*Math.sin(t4) - omega2*omega2*L2*Math.sin(t2) - w3*w3*L3*Math.sin(t3);
+  const aDen = Math.sin(t4 - t3);
+
+  const a3 = -(Av * Math.cos(t4) + Bv * Math.sin(t4)) / (L3 * aDen);
+  const a4 = -(Av * Math.cos(t3) + Bv * Math.sin(t3)) / (L4 * aDen);
+
+  return { t3, t4, w3, w4, a3, a4 };
+}
+
+function getMechType(L1, L2, L3, L4) {
+  const links = [L1, L2, L3, L4];
+  const s = Math.min(...links), l = Math.max(...links);
+  const pq = links.reduce((a,b)=>a+b,0) - s - l;
+  if (s + l < pq) {
+    if (s === L1) return 'Grashof — Double Crank';
+    if (s === L2 || s === L4) return 'Grashof — Crank-Rocker';
+    if (s === L3) return 'Grashof — Double Rocker';
+  } else if (Math.abs(s + l - pq) < 1e-6) {
+    return (Math.abs(L1-L3)<1e-6 && Math.abs(L2-L4)<1e-6) ? 'Grashof — Parallelogram' : 'Grashof — Kite';
+  }
+  return 'Non-Grashof — Double Rocker';
+}
+
+function runFB() {
+  const L1 = parseFloat(document.getElementById('fb-l1').value);
+  const L2 = parseFloat(document.getElementById('fb-l2').value);
+  const L3 = parseFloat(document.getElementById('fb-l3').value);
+  const L4 = parseFloat(document.getElementById('fb-l4').value);
+  const omega2 = parseFloat(document.getElementById('fb-omega').value);
+  const errEl = document.getElementById('fb-error');
+
+  if ([L1,L2,L3,L4,omega2].some(isNaN)) {
+    errEl.textContent = 'Please enter valid numerical values.';
+    errEl.classList.add('visible'); return;
+  }
+  const links = [L1,L2,L3,L4];
+  const longest = Math.max(...links);
+  if (longest >= links.reduce((a,b)=>a+b,0) - longest) {
+    errEl.textContent = 'Links cannot form a closed loop. Longest link exceeds sum of others.';
+    errEl.classList.add('visible'); return;
+  }
+  const s = Math.min(...links), lmax = Math.max(...links);
+  const pq = links.reduce((a,b)=>a+b,0) - s - lmax;
+  if (s + lmax > pq) {
+    errEl.textContent = 'Non-Grashof mechanism: crank will lock up. Ensure S + L ≤ P + Q.';
+    errEl.classList.add('visible'); return;
+  }
+  if (s !== L1 && s !== L2) {
+    errEl.textContent = 'Grashof, but acts as Double-Rocker. L2 or L1 must be the shortest link for full rotation.';
+    errEl.classList.add('visible'); return;
+  }
+  errEl.classList.remove('visible');
+
+  stopAnim('fb');
+
+  const mechType = getMechType(L1, L2, L3, L4);
+  const badge = document.getElementById('fb-badge');
+  badge.textContent = mechType;
+  badge.classList.add('visible');
+
+  const tableAngles = [0,30,60,90,120,180,210,240,270,300,330,360];
+  const plotAngles = [];
+  for (let a = 0; a <= 360; a += 3) plotAngles.push(a);
+
+  const plotKin = plotAngles.map(a => fbKinematics(a, L1, L2, L3, L4, omega2));
+  const w3arr = plotKin.map(k => k ? k.w3 : null);
+  const w4arr = plotKin.map(k => k ? k.w4 : null);
+  const a3arr = plotKin.map(k => k ? k.a3 : null);
+  const a4arr = plotKin.map(k => k ? k.a4 : null);
+
+  let html = `
+    <div class="anim-card fade-in">
+      <div class="anim-header">
+        <div class="anim-title">Animation</div>
+        <div class="anim-controls">
+          <span class="speed-label">Speed×</span>
+          <input class="speed-input" id="fb-speed" value="1" type="number" min="0.1" max="5" step="0.1">
+          <button class="ctrl-btn" id="fb-pause-btn" onclick="toggleFB()">⏸ Pause</button>
+        </div>
+      </div>
+      <div class="anim-canvas-wrap">
+        <canvas id="fb-canvas" class="mech-canvas" width="900" height="320"></canvas>
+        <div class="theta-overlay visible" id="fb-theta">θ₂ = 0°</div>
+      </div>
+    </div>
+
+    <div class="charts-grid fade-in">
+      <div class="chart-card">
+        <div class="chart-card-title">Coupler Angular Velocity ω₃ (rad/s)</div>
+        <canvas id="fb-c1"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Follower Angular Velocity ω₄ (rad/s)</div>
+        <canvas id="fb-c2"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Coupler Angular Acceleration α₃ (rad/s²)</div>
+        <canvas id="fb-c3"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Follower Angular Acceleration α₄ (rad/s²)</div>
+        <canvas id="fb-c4"></canvas>
+      </div>
+    </div>
+
+    <div class="table-card fade-in">
+      <div class="table-title">Kinematics Table</div>
+      <table>
+        <thead>
+          <tr>
+            <th>θ₂ (deg)</th>
+            <th>ω₃ (rad/s)</th>
+            <th>ω₄ (rad/s)</th>
+            <th>α₃ (rad/s²)</th>
+            <th>α₄ (rad/s²)</th>
+          </tr>
+        </thead>
+        <tbody id="fb-tbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('fb-results').innerHTML = html;
+
+  // Fill table
+  const tbody = document.getElementById('fb-tbody');
+  tableAngles.forEach(a => {
+    const k = fbKinematics(a, L1, L2, L3, L4, omega2);
+    const tr = document.createElement('tr');
+    if (k) {
+      tr.innerHTML = `<td>${a}°</td><td>${k.w3.toFixed(4)}</td><td>${k.w4.toFixed(4)}</td><td>${k.a3.toFixed(4)}</td><td>${k.a4.toFixed(4)}</td>`;
+    } else {
+      tr.innerHTML = `<td>${a}°</td><td colspan="4" style="color:var(--muted);text-align:center">Toggle point</td>`;
+    }
+    tbody.appendChild(tr);
+  });
+
+  // Charts
+  setTimeout(() => {
+    makeChart('fb-c1', 'ω₃', '#38bdf8', plotAngles, w3arr);
+    makeChart('fb-c2', 'ω₄', '#34d399', plotAngles, w4arr);
+    makeChart('fb-c3', 'α₃', '#f59e0b', plotAngles, a3arr);
+    makeChart('fb-c4', 'α₄', '#f472b6', plotAngles, a4arr);
+  }, 50);
+
+  document.getElementById('fb-info-panel').style.display = 'block';
+
+  // Animation
+  const canvas = document.getElementById('fb-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Auto-scale: center around mid-mechanism
+  const maxDim = Math.max(L1, L2, L3, L4);
+  const scale = Math.min(W, H) * 0.35 / maxDim;
+  const ox = W * 0.2, oy = H / 2; // O2 pivot
+  const o4x = ox + L1 * scale, o4y = oy; // O4 pivot
+
+  animState.fb.theta = 0;
+  animState.fb.running = true;
+
+  let lastTime2 = null;
+
+  function drawFB(ts) {
+    if (!animState.fb.running) return;
+    if (!lastTime2) lastTime2 = ts;
+    const dt = (ts - lastTime2) / 1000;
+    lastTime2 = ts;
+
+    const speed = parseFloat(document.getElementById('fb-speed')?.value || 1);
+    animState.fb.theta += omega2 * dt * speed;
+
+    const t2 = animState.fb.theta;
+    const K1 = L1/L2, K2 = L1/L4;
+    const K3 = (L1*L1+L2*L2-L3*L3+L4*L4)/(2*L2*L4);
+    const A = Math.cos(t2)-K1-K2*Math.cos(t2)+K3;
+    const Bv = -2*Math.sin(t2);
+    const C = K1-(K2+1)*Math.cos(t2)+K3;
+    const disc = Math.max(0, Bv*Bv-4*A*C);
+    const t4 = 2*Math.atan((-Bv-Math.sqrt(disc))/(2*A));
+
+    const Ax = ox + L2*Math.cos(t2)*scale;
+    const Ay = oy - L2*Math.sin(t2)*scale;
+    const Bx = o4x + L4*Math.cos(t4)*scale;
+    const By = o4y - L4*Math.sin(t4)*scale;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Ground link
+    ctx.beginPath();
+    ctx.moveTo(ox, oy); ctx.lineTo(o4x, o4y);
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.stroke();
+    // Ground hatching
+    for (let i = -2; i <= 8; i++) {
+      const tx = ox + (o4x-ox)*i/6;
+      const ty = oy + 10;
+      ctx.beginPath();
+      ctx.moveTo(tx-6, ty-6); ctx.lineTo(tx, ty);
+      ctx.strokeStyle = '#334155'; ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Ground pivots
+    [[ox,oy],[o4x,o4y]].forEach(([px,py]) => {
+      ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2);
+      ctx.fillStyle = '#0f172a'; ctx.fill();
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+    });
+
+    // Crank
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(Ax,Ay);
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+
+    // Coupler
+    ctx.beginPath(); ctx.moveTo(Ax,Ay); ctx.lineTo(Bx,By);
+    ctx.strokeStyle = '#34d399'; ctx.lineWidth = 4; ctx.stroke();
+
+    // Follower
+    ctx.beginPath(); ctx.moveTo(Bx,By); ctx.lineTo(o4x,o4y);
+    ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 4; ctx.stroke();
+
+    // Joint dots
+    [[Ax,Ay,'#ef4444'],[Bx,By,'#38bdf8']].forEach(([px,py,col]) => {
+      ctx.beginPath(); ctx.arc(px,py,6,0,Math.PI*2);
+      ctx.fillStyle = col; ctx.fill();
+    });
+
+    const tDeg = ((t2*180/Math.PI)%360+360)%360;
+    document.getElementById('fb-theta').textContent = `θ₂ = ${tDeg.toFixed(1)}°`;
+
+    const k = fbKinematics(tDeg, L1, L2, L3, L4, omega2);
+    if (k) {
+      document.getElementById('fb-readout').innerHTML =
+        `<span style="color:#94a3b8">ω₃</span> &nbsp;${k.w3.toFixed(4)} <span style="color:var(--muted)">rad/s</span><br>` +
+        `<span style="color:#94a3b8">ω₄</span> &nbsp;${k.w4.toFixed(4)} <span style="color:var(--muted)">rad/s</span><br>` +
+        `<span style="color:#94a3b8">α₃</span> &nbsp;${k.a3.toFixed(4)} <span style="color:var(--muted)">rad/s²</span><br>` +
+        `<span style="color:#94a3b8">α₄</span> &nbsp;${k.a4.toFixed(4)} <span style="color:var(--muted)">rad/s²</span>`;
+    }
+
+    animState.fb.rafId = requestAnimationFrame(drawFB);
+  }
+
+  animState.fb.rafId = requestAnimationFrame(drawFB);
+}
+
+function toggleFB() {
+  const btn = document.getElementById('fb-pause-btn');
+  if (animState.fb.running) {
+    stopAnim('fb');
+    btn.textContent = '▶ Resume';
+  } else {
+    btn.textContent = '⏸ Pause';
+    runFB();
+  }
+}
+</script>
+</body>
+</html>
