@@ -951,7 +951,7 @@ function getMechType(L1, L2, L3, L4) {
   } else if (Math.abs(s + l - pq) < 1e-6) {
     return (Math.abs(L1-L3)<1e-6 && Math.abs(L2-L4)<1e-6) ? 'Grashof — Parallelogram' : 'Grashof — Kite';
   }
- // return 'Non-Grashof — Double Rocker';
+  return 'Non-Grashof — Double Rocker';
 }
 
 function runFB() {
@@ -978,11 +978,11 @@ function runFB() {
     errEl.textContent = 'Non-Grashof mechanism: crank will lock up. Ensure S + L ≤ P + Q.';
     errEl.classList.add('visible'); return;
   }
-  if (s !== L1 && s !== L2) {
-    errEl.textContent = 'Grashof, but acts as Double-Rocker. L2 or L1 must be the shortest link for full rotation.';
-    errEl.classList.add('visible'); return;
-  }
-  errEl.classList.remove('visible');
+  // if (s !== L1 && s !== L2) {
+  //   errEl.textContent = 'Grashof, but acts as Double-Rocker. L2 or L1 must be the shortest link for full rotation.';
+  //   errEl.classList.add('visible'); return;
+  // }
+  // errEl.classList.remove('visible');
 
   stopAnim('fb');
 
