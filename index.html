@@ -951,7 +951,7 @@ function getMechType(L1, L2, L3, L4) {
   } else if (Math.abs(s + l - pq) < 1e-6) {
     return (Math.abs(L1-L3)<1e-6 && Math.abs(L2-L4)<1e-6) ? 'Grashof — Parallelogram' : 'Grashof — Kite';
   }
-  return 'Non-Grashof — Double Rocker';
+ // return 'Non-Grashof — Double Rocker';
 }
 
 function runFB() {
